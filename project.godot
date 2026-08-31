@@ -1,0 +1,38 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes to a component
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Godot Mobile Template"
+config/description="Master reusable Godot 4.x Android mobile-game template — Phase 0 skeleton. See docs/ARCHITECTURE.md."
+run/main_scene="res://scenes/boot.tscn"
+config/features=PackedStringArray("4.7", "Mobile")
+config/icon="res://icon.svg"
+
+[display]
+
+window/size/viewport_width=1080
+window/size/viewport_height=2340
+window/handheld/orientation=1
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/energy_saving/keep_screen_on=true
+
+[physics]
+
+3d/physics_engine="Jolt Physics"
+common/physics_interpolation=true
+common/physics_ticks_per_second=60
+
+[rendering]
+
+renderer/rendering_method="mobile"
+textures/vram_compression/import_etc2_astc=true
+anti_aliasing/quality/msaa_3d=0

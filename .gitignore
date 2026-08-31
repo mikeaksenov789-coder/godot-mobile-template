@@ -1,0 +1,20 @@
+# Godot 4+ editor/import cache
+.godot/
+.import/
+
+# Godot-generated export credentials (keystore paths/passwords) — never commit
+export_credentials.cfg
+
+# Build output
+/build/
+*.apk
+*.aab
+
+# Keystores / signing secrets — never commit
+*.keystore
+*.jks
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.tmp

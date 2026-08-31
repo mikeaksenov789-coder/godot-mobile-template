@@ -1,0 +1,40 @@
+name: Android Build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch: {}
+
+env:
+  GODOT_VERSION: "4.7.2"
+  EXPORT_NAME: "godot-mobile-template"
+
+jobs:
+  export-android-debug:
+    name: Android Debug Build
+    runs-on: ubuntu-24.04
+    # Pinned by digest (see ci/Dockerfile) — Godot 4.7.2 + matching Android
+    # export templates + Android SDK/NDK + JDK, all baked into the image.
+    container:
+      image: barichello/godot-ci@sha256:cdcca31e9194fd59a68a63f4b1b9c3981716819c520cd6f7966c5d72ca7246bd
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Move export templates into place
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates/
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+
+      - name: Build Android debug APK
+        run: bash ci/export_android.sh
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.EXPORT_NAME }}-debug-apk
+          path: build/android/*.apk
+          if-no-files-found: error
