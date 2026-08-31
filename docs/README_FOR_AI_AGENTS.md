@@ -15,11 +15,14 @@ reconsider the API rather than special-case it.
 | Path | Owns | Status |
 |---|---|---|
 | `project.godot`, `export_presets.cfg` | Engine/Android/Jolt config | Done (Phase 0) |
-| `scenes/boot.tscn` | Boot entry point | Done (Phase 0), placeholder content only |
-| `addons/core/*` | Foundation systems (state, save, input, HUD, audio, haptics, performance, pooling, analytics, ads, result flow) | Empty, see each folder's `README.md` for its phase |
+| `scenes/boot.tscn` | Boot entry point | Done (Phase 0/1), placeholder content only — now drives GameManager Boot -> MainMenu |
+| `addons/core/state/` | GameManager (FSM), SceneRouter | Done (Phase 1) |
+| `addons/core/save/` | SaveSystem (versioned, atomic, migrating) | Done (Phase 1) |
+| `addons/core/{settings,input,hud,audio,haptics,result_flow,performance,pooling,analytics,ads}/` | Remaining Foundation systems | Empty, see each folder's `README.md` for its phase |
+| `tests/` | Headless test suite (custom runner, no third-party addon) | Done (Phase 1) — covers state/save/router |
 | `game/` | Per-game gameplay logic | Empty — do not populate before an actual MVP is approved |
 | `presentation/` | Per-game art/VFX/audio | Empty — do not populate before an actual MVP is approved |
-| `ci/` | Build environment + export scripts | Debug Android export only (Phase 0) |
+| `ci/` | Build environment + export scripts | Debug Android export only (Phase 0); `tests/run_tests.gd` gates it (Phase 1) |
 | `tools/validation/` | Automated validation rule definitions | Empty until Phase 7 |
 | `docs/ARCHITECTURE.md` | Build-relevant architecture notes | Living document |
 

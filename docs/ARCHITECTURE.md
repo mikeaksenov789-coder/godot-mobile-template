@@ -8,6 +8,56 @@ matrix, phased implementation plan) was delivered to the CTO as
 implementation started. This file tracks build-relevant specifics as they
 land; it does not restate the full spec.
 
+## Current status: Phase 1 — Core State & Save
+
+Implemented on top of the Phase 0 baseline (unchanged: Godot 4.7.2, Jolt,
+portrait Android, cloud build):
+
+- `addons/core/state/game_manager.gd` (autoload `GameManager`) — the
+  top-level FSM: `Boot -> MainMenu -> Loading -> Playing <-> Paused ->
+  Result`. `Result` is a dead end in Phase 1 on purpose; retry/back-to-menu
+  edges belong to Result Flow (Phase 3).
+- `addons/core/state/scene_router.gd` (autoload `SceneRouter`) — the only
+  sanctioned way to swap the active scene (`goto_scene(path)`), with a
+  guard against overlapping/reentrant loads and validation of the target
+  resource before touching the tree.
+- `addons/core/save/save_system.gd` (autoload `SaveSystem`) — a versioned
+  JSON save envelope (`schema_version` + separated `foundation`/`game`
+  blocks), atomic write, safe load (missing/corrupted/unrecognised-version
+  all fall back to a fresh envelope; corrupted files are backed up, not
+  discarded), and a working v1→v2 migration.
+- `scenes/boot.gd` now drives `GameManager` through `Boot -> MainMenu` on
+  boot, so the state machine is exercised at runtime, not just in tests.
+- `tests/` — a minimal custom headless test runner (no third-party test
+  addon; see "Why a custom test runner" below) covering all three systems.
+  Wired into CI as a required step ahead of the Android build.
+
+See each of `addons/core/state/README.md` and `addons/core/save/README.md`
+for the file-level summary.
+
+## Why a custom test runner, not GUT/gdUnit4
+
+Pulling in a third-party test addon means pinning ITS version compatibility
+against the exact engine version too, and vendoring/updating it over time.
+Phase 1 only needs "run assertions headlessly in CI, fail the build on
+red" — `tests/test_case.gd` (~60 lines) covers that without an extra
+dependency. Revisit if test needs grow past what soft-assert `assert_*`
+calls comfortably express.
+
+Two non-obvious things the runner and suites work around, both confirmed
+against the exact pinned 4.7.2 engine build:
+
+- A node's `get_tree()` returns null until one frame after the runner's
+  custom `SceneTree._initialize()` starts (autoloads call `get_tree()`
+  internally, e.g. SceneRouter) — the runner yields one `process_frame`
+  before running anything, and again between every test (so a previous
+  test's `queue_free()`'d scene is actually gone before the next test adds
+  a same-named node under `root`).
+- Global `class_name` lookups (e.g. `extends TestCase`) aren't resolved on
+  a fresh checkout with no `.godot/` cache — exactly the state every CI
+  run starts from — so suites `extends "res://tests/test_case.gd"` by path
+  instead.
+
 ## Current status: Phase 0 — Skeleton
 
 Implemented in this phase:

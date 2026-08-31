@@ -11,8 +11,23 @@ env:
   EXPORT_NAME: "godot-mobile-template"
 
 jobs:
+  run-tests:
+    name: Automated Tests
+    runs-on: ubuntu-24.04
+    container:
+      image: barichello/godot-ci@sha256:cdcca31e9194fd59a68a63f4b1b9c3981716819c520cd6f7966c5d72ca7246bd
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Run test suite
+        run: godot --headless --script res://tests/run_tests.gd
+
   export-android-debug:
     name: Android Debug Build
+    needs: run-tests
     runs-on: ubuntu-24.04
     # Pinned by digest (see ci/Dockerfile) — Godot 4.7.2 + matching Android
     # export templates + Android SDK/NDK + JDK, all baked into the image.
