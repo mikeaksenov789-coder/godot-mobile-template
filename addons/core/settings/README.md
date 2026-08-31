@@ -1,7 +1,15 @@
 # Foundation — Settings & Pause
 
-Not implemented yet — reserved by the approved Master Template Architecture
-(see `docs/ARCHITECTURE.md`). Scheduled for **Phase 2 (Input, HUD, pause/settings)** of the implementation
-plan. This directory exists now so the repository shape matches the approved
-structure from Phase 0 onward; do not add gameplay, art, or Foundation code
-here until its phase starts.
+Implemented — Phase 2 (Input, HUD, pause & settings).
+
+- `pause_controller.gd` (autoload `PauseController`) — the pause gate:
+  sets `get_tree().paused` and emits `paused`/`resumed`. Knows nothing
+  about gameplay or the HUD; `HUDLayer` reacts to its signals.
+- `settings_manager.gd` (autoload `SettingsManager`) — the six required
+  settings (Master/Music/SFX volume, Vibration, Graphics LOW/HIGH,
+  Control sensitivity), persisted through `SaveSystem`'s **Foundation**
+  block (`get_foundation_data()`/`set_foundation_data()`), never the
+  per-game payload — settings apply across every game cloned from this
+  template.
+
+Tests: `tests/test_pause_controller.gd`, `tests/test_settings_manager.gd`.

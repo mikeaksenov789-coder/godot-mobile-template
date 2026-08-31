@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3 uid="uid://boot_scene_phase0"]
+[gd_scene load_steps=3 format=3 uid="uid://boot_scene_phase0"]
 
 [ext_resource type="Script" path="res://scenes/boot.gd" id="1"]
+[ext_resource type="PackedScene" path="res://addons/core/hud/hud_layer.tscn" id="2"]
 
 [node name="Boot" type="Control"]
 layout_mode = 3
@@ -35,7 +36,9 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 36
 text = "Godot Mobile Template
-Phase 1 — Core State & Save"
+Phase 2 — Input, HUD, Pause & Settings"
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2
+
+[node name="HUD" parent="." instance=ExtResource("2")]

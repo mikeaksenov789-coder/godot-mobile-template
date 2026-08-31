@@ -19,6 +19,12 @@ const SUITE_SCRIPTS: Array[String] = [
 	"res://tests/test_game_manager.gd",
 	"res://tests/test_scene_router.gd",
 	"res://tests/test_save_system.gd",
+	"res://tests/test_input_manager.gd",
+	"res://tests/test_input_profile.gd",
+	"res://tests/test_virtual_joystick.gd",
+	"res://tests/test_safe_area.gd",
+	"res://tests/test_pause_controller.gd",
+	"res://tests/test_settings_manager.gd",
 ]
 
 

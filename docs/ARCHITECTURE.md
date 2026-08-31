@@ -8,6 +8,64 @@ matrix, phased implementation plan) was delivered to the CTO as
 implementation started. This file tracks build-relevant specifics as they
 land; it does not restate the full spec.
 
+## Current status: Phase 2 — Input, HUD, Pause & Settings
+
+Implemented on top of the verified Phase 1 baseline (unchanged: Godot
+4.7.2, Jolt, portrait Android, cloud build, GameManager/SceneRouter/
+SaveSystem):
+
+- `addons/core/input/` (autoload `InputManager`) — normalizes raw touch
+  into tap/hold/drag/swipe/pinch gestures and resolves them through a
+  swappable `InputProfile` Resource into `action_triggered`. A reusable
+  `VirtualJoystick` control demonstrates the "virtual controls feed the
+  same InputManager stream" pattern.
+- `addons/core/hud/` — `HUDLayer` (CanvasLayer root: SafeArea + pause
+  button + on-demand Settings/Pause screens), `SafeArea` (reads the real
+  device safe area from `DisplayServer`, pure-function inset math so it's
+  unit testable without a real notch), a Settings screen built from three
+  generic, theme-driven widgets (`labeled_slider`, `labeled_toggle`,
+  `labeled_option`), and one Theme resource every one of them draws from.
+- `addons/core/settings/` (autoloads `PauseController`, `SettingsManager`)
+  — pausing is just `get_tree().paused` plus signals; settings are the six
+  required controls (Master/Music/SFX volume, Vibration, Graphics LOW/
+  HIGH, Control sensitivity), persisted through SaveSystem's **Foundation**
+  block (never the per-game payload — this is exactly what that Phase 1
+  separation was for).
+- `boot.gd` now also prints SettingsManager/InputManager/PauseController
+  readiness, and `boot.tscn` instantiates `HUDLayer`, so the pause button
+  and Settings screen are reachable at runtime, not just under test.
+- `tests/` grew from 3 suites (18 tests) to 9 suites (60 tests) — gesture
+  recognition, InputProfile mapping, the virtual joystick, Safe Area inset
+  math, pause/resume, and settings persistence (including LOW/HIGH and a
+  corrupted-save fallback).
+
+### Why HUD is theme-driven
+
+Every widget under `addons/core/hud/` (and `settings_screen.tscn`,
+`pause_overlay.tscn`) references `theme/hud_theme.tres` for its Button/
+Panel/Label styling — none of them hardcode a color or style box in the
+script. A future game reskins the whole HUD by replacing that one Theme
+resource; nothing in `input_manager.gd`, `settings_manager.gd`, or
+`pause_controller.gd` needs to change, or even knows the Theme exists.
+
+### Two more engine quirks found this phase, both confirmed against 4.7.2
+
+- An untyped `Array` literal (e.g. `[a, b]`) does not satisfy a parameter
+  typed `Array[String]`, even when every element actually is a String —
+  the literal must be assigned to an explicitly `Array[String]`-typed
+  variable first. Caught in `settings_screen.gd` calling
+  `LabeledOption.set_options()` — passed local tests (which never
+  instantiate the actual scene) but failed at scene `_ready()`, which is
+  why Phase 2's verification included directly instantiating
+  `settings_screen.tscn`/`pause_overlay.tscn`/`hud_layer.tscn` headlessly,
+  not just running the unit test suite.
+- `DisplayServer`'s safe-area API lives at
+  `servers/display/display_server.h` in the engine source, not
+  `servers/display_server.h` — `get_display_safe_area() -> Rect2i`
+  defaults to `screen_get_usable_rect()` on platforms without a real
+  cutout (safe everywhere, not just Android), which is what makes
+  `SafeArea` a no-op in headless CI rather than an error.
+
 ## Current status: Phase 1 — Core State & Save
 
 Implemented on top of the Phase 0 baseline (unchanged: Godot 4.7.2, Jolt,

@@ -1,0 +1,14 @@
+[gd_resource type="Resource" script_class="" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/core/input/input_profile.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+tap_action = "primary_action"
+hold_action = "secondary_action"
+drag_action = "move"
+pinch_action = "zoom"
+swipe_up_action = "swipe_up"
+swipe_down_action = "swipe_down"
+swipe_left_action = "swipe_left"
+swipe_right_action = "swipe_right"

@@ -15,11 +15,14 @@ reconsider the API rather than special-case it.
 | Path | Owns | Status |
 |---|---|---|
 | `project.godot`, `export_presets.cfg` | Engine/Android/Jolt config | Done (Phase 0) |
-| `scenes/boot.tscn` | Boot entry point | Done (Phase 0/1), placeholder content only — now drives GameManager Boot -> MainMenu |
+| `scenes/boot.tscn` | Boot entry point | Done (Phase 0/1/2), placeholder content only — drives GameManager Boot -> MainMenu and instantiates HUDLayer |
 | `addons/core/state/` | GameManager (FSM), SceneRouter | Done (Phase 1) |
 | `addons/core/save/` | SaveSystem (versioned, atomic, migrating) | Done (Phase 1) |
-| `addons/core/{settings,input,hud,audio,haptics,result_flow,performance,pooling,analytics,ads}/` | Remaining Foundation systems | Empty, see each folder's `README.md` for its phase |
-| `tests/` | Headless test suite (custom runner, no third-party addon) | Done (Phase 1) — covers state/save/router |
+| `addons/core/input/` | InputManager (gestures), InputProfile, VirtualJoystick | Done (Phase 2) |
+| `addons/core/hud/` | HUDLayer, SafeArea, Settings screen, reusable widgets, Theme | Done (Phase 2) |
+| `addons/core/settings/` | PauseController, SettingsManager | Done (Phase 2) |
+| `addons/core/{audio,haptics,result_flow,performance,pooling,analytics,ads}/` | Remaining Foundation systems | Empty, see each folder's `README.md` for its phase |
+| `tests/` | Headless test suite (custom runner, no third-party addon) | Done (Phase 1/2) — 9 suites, 60 tests: state/save/router/input/HUD/settings |
 | `game/` | Per-game gameplay logic | Empty — do not populate before an actual MVP is approved |
 | `presentation/` | Per-game art/VFX/audio | Empty — do not populate before an actual MVP is approved |
 | `ci/` | Build environment + export scripts | Debug Android export only (Phase 0); `tests/run_tests.gd` gates it (Phase 1) |
@@ -45,3 +48,11 @@ reconsider the API rather than special-case it.
 5. Never commit a keystore, keystore password, or any other signing
    secret. Release signing is CI-secret-injected only (see
    `docs/ARCHITECTURE.md`).
+6. A green `tests/run_tests.gd` run is not proof a `.tscn` scene actually
+   loads — unit tests exercise autoload singletons directly and don't
+   instantiate every scene. Before pushing a new/changed `.tscn`,
+   headlessly `load()` and `instantiate()` it (and its lazily-created
+   children, if any) at least once; Phase 2 shipped a real bug
+   (`Array[String]` vs. a plain array literal) that 60/60 passing unit
+   tests didn't catch because none of them touched the scene file it was
+   in.
