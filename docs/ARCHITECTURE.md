@@ -58,8 +58,14 @@ credentials — this phase is entirely CI/build tooling.
   before any export runs: `versionCode` is `GITHUB_RUN_NUMBER` (a
   zero-maintenance monotonic source — see below); `versionName` is the
   git tag (stripped of its leading `v`) on a tagged release build, or
-  `0.0.0-dev+<short-sha>.<version-code>` on every other trigger. The
-  built APK/AAB file itself is also renamed to embed both, e.g.
+  `0.0.0-dev+<short-sha>.<version-code>` on every other trigger — the
+  short SHA comes from `$GITHUB_SHA`, not `git rev-parse`, specifically
+  because the first real CI run proved `git rev-parse` silently falls
+  back to `"unknown"` here: `actions/checkout`'s shallow clone is owned
+  by a different filesystem user than this script's shell until
+  checkout's own post-job step adds a `safe.directory` allowance, which
+  happens *after* this script runs. `$GITHUB_SHA` needs no git call at
+  all. The built APK/AAB file itself is also renamed to embed both, e.g.
   `godot-mobile-template-1.2.3-42-debug.apk`.
 - **Release AAB path, structurally ready.** `export_presets.cfg` gained
   a second preset, `"Android (Release)"` (`gradle_build/export_format=1`
@@ -98,6 +104,26 @@ pinned by the same digest as everything else: it cannot drift without
 human bumps the cache key's `-v1` suffix anyway. A coarser key here isn't
 a shortcut — it's the correct key for an environment that's pinned one
 level up already.
+
+### Why `GRADLE_USER_HOME` is set explicitly, not left to default
+
+The first real Gradle-cache run silently cached nothing: `actions/cache`
+reported the paths it was told to save (`~/.gradle/caches`,
+`~/.gradle/wrapper`) didn't exist, even though the build log showed
+Gradle actually downloading its own distribution and running a real
+build. Godot spawns `gradlew` as a subprocess, and that subprocess's own
+resolution of "the current user's home directory" (which Gradle's
+default `GRADLE_USER_HOME` is derived from) is not necessarily the same
+`$HOME` a plain shell `run:` step sees — the same class of surprise that
+made the Android SDK path check in `ci/validate_environment.sh`
+advisory-only rather than a hard assertion (see above). Rather than
+locate and cache whatever path Gradle happened to pick, a
+"Set Gradle user home" step now exports `GRADLE_USER_HOME=$HOME/.gradle`
+into `$GITHUB_ENV` before the build runs. Gradle always honors this
+environment variable first, ahead of any home-directory resolution of
+its own, so this makes the location deterministic instead of guessed at
+— and the cache step reads paths from that same `env.GRADLE_USER_HOME`,
+so the two can never drift apart.
 
 ### Why export templates get no cache step
 

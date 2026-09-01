@@ -32,7 +32,19 @@ else
   VERSION_CODE="$(date -u +%s)"
 fi
 
-SHORT_SHA="$(git rev-parse --short=8 HEAD 2>/dev/null || echo "unknown")"
+# GITHUB_SHA is always set by Actions and needs no git call at all —
+# preferred over `git rev-parse` specifically because actions/checkout's
+# shallow (--depth=1) clone runs as a different filesystem owner than
+# whatever user this script's shell runs as until actions/checkout's own
+# post-job step adds a `safe.directory` allowance, which happens AFTER
+# this script (confirmed by CI: `git rev-parse` silently fell back to
+# "unknown" here on the first real run). `git rev-parse` stays as the
+# fallback for a local dry run outside CI, where GITHUB_SHA is unset.
+if [ -n "${GITHUB_SHA:-}" ]; then
+  SHORT_SHA="${GITHUB_SHA:0:8}"
+else
+  SHORT_SHA="$(git rev-parse --short=8 HEAD 2>/dev/null || echo "unknown")"
+fi
 
 if [ -n "${GITHUB_REF:-}" ] && [[ "$GITHUB_REF" == refs/tags/v* ]]; then
   VERSION_NAME="${GITHUB_REF#refs/tags/v}"

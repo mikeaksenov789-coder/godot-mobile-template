@@ -43,6 +43,17 @@ jobs:
         with:
           lfs: true
 
+      # Godot's Android export spawns gradlew as a subprocess, and where
+      # THAT subprocess resolves its Gradle user home from is not
+      # something to guess at (it bit the first Phase 6 CI run — see
+      # docs/ARCHITECTURE.md). Exporting GRADLE_USER_HOME explicitly here
+      # makes it deterministic: Gradle always honors this env var first,
+      # before falling back to any user-home resolution of its own, and
+      # every later step in this job (including the export itself)
+      # inherits it.
+      - name: Set Gradle user home
+        run: echo "GRADLE_USER_HOME=$HOME/.gradle" >> "$GITHUB_ENV"
+
       - name: Move export templates into place
         run: |
           mkdir -v -p ~/.local/share/godot/export_templates/
@@ -58,8 +69,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
+            ${{ env.GRADLE_USER_HOME }}/caches
+            ${{ env.GRADLE_USER_HOME }}/wrapper
           key: gradle-${{ env.GODOT_VERSION }}-v1
           restore-keys: |
             gradle-${{ env.GODOT_VERSION }}-
@@ -119,6 +130,10 @@ jobs:
             echo "::notice::ANDROID_KEYSTORE_BASE64 is not configured — skipping the release AAB build. This is expected until a human-owned signing keystore is added as a repository secret (see docs/ARCHITECTURE.md section 5). The release pipeline itself is otherwise fully wired and ready."
           fi
 
+      - name: Set Gradle user home
+        if: steps.check_secret.outputs.has_secret == 'true'
+        run: echo "GRADLE_USER_HOME=$HOME/.gradle" >> "$GITHUB_ENV"
+
       - name: Move export templates into place
         if: steps.check_secret.outputs.has_secret == 'true'
         run: |
@@ -130,8 +145,8 @@ jobs:
         uses: actions/cache@v4
         with:
           path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
+            ${{ env.GRADLE_USER_HOME }}/caches
+            ${{ env.GRADLE_USER_HOME }}/wrapper
           key: gradle-${{ env.GODOT_VERSION }}-v1
           restore-keys: |
             gradle-${{ env.GODOT_VERSION }}-
