@@ -2,7 +2,7 @@ extends Control
 
 
 func _ready() -> void:
-	print("Godot Mobile Template — Phase 5 skeleton booted OK.")
+	print("Godot Mobile Template — Phase 6 skeleton booted OK.")
 	print("Physics engine: ", ProjectSettings.get_setting("physics/3d/physics_engine"))
 
 	GameManager.state_changed.connect(_on_game_manager_state_changed)

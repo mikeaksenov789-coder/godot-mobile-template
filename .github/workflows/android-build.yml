@@ -22,7 +22,11 @@ jobs:
         with:
           lfs: true
 
-      - name: Run test suite
+      # Runs, in this required order, in one script: unit tests -> content
+      # validators -> scene-instantiation smoke test. See ci/run_tests.sh
+      # and docs/ARCHITECTURE.md for why these are three separate Godot
+      # --script entry points chained together rather than one.
+      - name: Run tests, validators & smoke test
         run: bash ci/run_tests.sh
 
   export-android-debug:
@@ -44,8 +48,37 @@ jobs:
           mkdir -v -p ~/.local/share/godot/export_templates/
           mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
 
+      # Export templates themselves need no cache: they're baked into the
+      # pinned image digest above, so "restoring" them here would just be
+      # a same-content round-trip through GitHub's cache store for a
+      # local mv that already costs nothing (see docs/ARCHITECTURE.md).
+      # Gradle's own dependency/wrapper downloads are the actual
+      # network-heavy, cacheable part of an Android export.
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ env.GODOT_VERSION }}-v1
+          restore-keys: |
+            gradle-${{ env.GODOT_VERSION }}-
+
+      - name: Validate Android build environment
+        run: bash ci/validate_environment.sh
+
+      - name: Set build version
+        run: bash ci/set_version.sh
+
       - name: Build Android debug APK
         run: bash ci/export_android.sh
+
+      - name: Rename APK with build version
+        run: |
+          apk_path="$(ls build/android/*.apk | head -1)"
+          new_path="build/android/${EXPORT_NAME}-${BUILD_VERSION_NAME}-${BUILD_VERSION_CODE}-debug.apk"
+          mv "$apk_path" "$new_path"
+          echo "Artifact file: $(basename "$new_path")"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -53,3 +86,85 @@ jobs:
           name: ${{ env.EXPORT_NAME }}-debug-apk
           path: build/android/*.apk
           if-no-files-found: error
+          retention-days: 90
+
+  export-android-release:
+    name: Android Release Build (AAB)
+    needs: run-tests
+    runs-on: ubuntu-24.04
+    # Runs on every tag push and manual dispatch so the pipeline itself
+    # is always exercised, but every actual build/upload step below is
+    # gated on the ANDROID_KEYSTORE_BASE64 secret being configured — see
+    # docs/ARCHITECTURE.md section 5. Until a human provisions that
+    # secret (a real, human-owned signing keystore is never fabricated
+    # here), this job runs its one lightweight check and reports
+    # success with everything else skipped: "structurally ready, blocked
+    # only by missing signing secrets," not red.
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    container:
+      image: barichello/godot-ci@sha256:cdcca31e9194fd59a68a63f4b1b9c3981716819c520cd6f7966c5d72ca7246bd
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - name: Check for release signing secret
+        id: check_secret
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "has_secret=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "has_secret=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::ANDROID_KEYSTORE_BASE64 is not configured — skipping the release AAB build. This is expected until a human-owned signing keystore is added as a repository secret (see docs/ARCHITECTURE.md section 5). The release pipeline itself is otherwise fully wired and ready."
+          fi
+
+      - name: Move export templates into place
+        if: steps.check_secret.outputs.has_secret == 'true'
+        run: |
+          mkdir -v -p ~/.local/share/godot/export_templates/
+          mv /root/.local/share/godot/export_templates/${GODOT_VERSION}.stable ~/.local/share/godot/export_templates/${GODOT_VERSION}.stable
+
+      - name: Cache Gradle dependencies
+        if: steps.check_secret.outputs.has_secret == 'true'
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: gradle-${{ env.GODOT_VERSION }}-v1
+          restore-keys: |
+            gradle-${{ env.GODOT_VERSION }}-
+
+      - name: Validate Android build environment
+        if: steps.check_secret.outputs.has_secret == 'true'
+        run: bash ci/validate_environment.sh
+
+      - name: Set build version
+        if: steps.check_secret.outputs.has_secret == 'true'
+        run: bash ci/set_version.sh
+
+      - name: Build Android release AAB
+        if: steps.check_secret.outputs.has_secret == 'true'
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_ALIAS: ${{ secrets.ANDROID_KEYSTORE_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+        run: bash ci/export_android_release.sh
+
+      - name: Rename AAB with build version
+        if: steps.check_secret.outputs.has_secret == 'true'
+        run: |
+          aab_path="$(ls build/android/*.aab | head -1)"
+          new_path="build/android/${EXPORT_NAME}-${BUILD_VERSION_NAME}-${BUILD_VERSION_CODE}-release.aab"
+          mv "$aab_path" "$new_path"
+          echo "Artifact file: $(basename "$new_path")"
+
+      - name: Upload AAB artifact
+        if: steps.check_secret.outputs.has_secret == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.EXPORT_NAME }}-release-aab
+          path: build/android/*.aab
+          if-no-files-found: error
+          retention-days: 90

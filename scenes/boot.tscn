@@ -36,7 +36,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_font_sizes/font_size = 36
 text = "Godot Mobile Template
-Phase 5 — Analytics & Ads Interfaces"
+Phase 6 — Cloud Build Pipeline Hardening"
 horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 2

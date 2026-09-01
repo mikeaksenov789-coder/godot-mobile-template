@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Godot Mobile Template"
-config/description="Master reusable Godot 4.x Android mobile-game template — Phase 5: analytics & rewarded ads interfaces. See docs/ARCHITECTURE.md."
+config/description="Master reusable Godot 4.x Android mobile-game template — Phase 6: cloud build pipeline hardening. See docs/ARCHITECTURE.md."
 run/main_scene="res://scenes/boot.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"

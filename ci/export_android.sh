@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Builds the Android debug APK headlessly using the "Android" preset in
-# export_presets.cfg (output path comes from that preset). Release export is
-# deliberately not wired up yet: it needs a signing keystore, which is a
-# human-owned secret (see docs/ARCHITECTURE.md, section 5) not available in
-# this Phase 0 skeleton.
+# export_presets.cfg (output path comes from that preset). Godot manages
+# its own debug signing key automatically, so no secret is needed here.
+# The release AAB path (ci/export_android_release.sh, the "Android
+# (Release)" preset) needs a real, human-owned signing keystore — see
+# docs/ARCHITECTURE.md section 5 — and is gated behind that secret's
+# presence in .github/workflows/android-build.yml.
 set -euo pipefail
 
 mkdir -p build/android

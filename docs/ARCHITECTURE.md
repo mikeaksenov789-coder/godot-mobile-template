@@ -8,6 +8,110 @@ matrix, phased implementation plan) was delivered to the CTO as
 implementation started. This file tracks build-relevant specifics as they
 land; it does not restate the full spec.
 
+## Current status: Phase 6 — Cloud Build Pipeline Hardening
+
+Implemented on top of the verified Phase 5 baseline (unchanged: Godot
+4.7.2, Jolt, all Foundation systems through Phase 5). No gameplay, no
+final art, no Phase 7+ systems, no real ad/analytics SDK, no real
+credentials — this phase is entirely CI/build tooling.
+
+- **CI validation order, made real.** `tests/run_tests.gd`,
+  `tools/validation/run_validation.gd`, and `tests/run_smoke_test.gd` are
+  now three separate, independently-invokable `godot --headless --script`
+  entry points (the smoke test used to be bundled onto the end of
+  `run_tests.gd`; content validation used to run only inside
+  `tests/test_performance_validator.gd`'s own unit tests). `ci/run_tests.sh`
+  chains all three in the required order — unit tests -> content
+  validators -> scene smoke test — into one combined, clearly-sectioned
+  log (`::group::`/`::endgroup::` per stage), still with the "SCRIPT
+  ERROR" grep safety net over the combined output. This is the same
+  script both CI and a local `bash ci/run_tests.sh` run.
+- **Content validators now run as their own gate.**
+  `tools/validation/run_validation.gd` runs
+  `performance_validator.gd`'s checks (light budget, repeated-mesh
+  threshold, placeholder markers) against every real scene under
+  `addons/core/` and `scenes/` — always clean today (no gameplay/art
+  shipped yet), but the gate future content must pass now runs on every
+  CI build, not only inside its own unit tests.
+- **Reproducible build environment, validated, not assumed.**
+  `ci/validate_environment.sh` runs before either export step and fails
+  fast, with a clear `::error::`, if the Godot version, JDK, Android
+  export templates, or Android SDK path (baked into the godot-ci image's
+  Editor Settings — see Phase 0) aren't where this pipeline expects —
+  proving a fresh CI runner can build from repository state alone rather
+  than discovering a missing piece deep inside a multi-minute gradle
+  build.
+- **Gradle caching.** `actions/cache` caches `~/.gradle/caches` and
+  `~/.gradle/wrapper`, keyed on the pinned `GODOT_VERSION` (see "Why the
+  Gradle cache key is just the Godot version" below).
+- **Automatic versioning.** `ci/set_version.sh` patches
+  `export_presets.cfg`'s `version/code`/`version/name` for every preset
+  before any export runs: `versionCode` is `GITHUB_RUN_NUMBER` (a
+  zero-maintenance monotonic source — see below); `versionName` is the
+  git tag (stripped of its leading `v`) on a tagged release build, or
+  `0.0.0-dev+<short-sha>.<version-code>` on every other trigger. The
+  built APK/AAB file itself is also renamed to embed both, e.g.
+  `godot-mobile-template-1.2.3-42-debug.apk`.
+- **Release AAB path, structurally ready.** `export_presets.cfg` gained
+  a second preset, `"Android (Release)"` (`gradle_build/export_format=1`
+  — AAB instead of APK, plus empty `keystore/release`/
+  `keystore/release_user`/`keystore/release_password` fields), and
+  `ci/export_android_release.sh` populates those three fields from CI
+  secrets and runs `--export-release`. The `export-android-release`
+  workflow job runs on every tag push and manual dispatch, but every
+  step past a one-line secret-presence check is conditioned on
+  `secrets.ANDROID_KEYSTORE_BASE64` being set — absent that secret the
+  job still reports success (its steps show as skipped, not failed),
+  which is the correct state for "structurally ready, blocked only by a
+  missing human-owned secret." No keystore or credential is fabricated
+  or committed anywhere in this repository.
+- **All three build triggers now do something meaningful.**
+  `push: branches: [main]` and `workflow_dispatch` already existed;
+  `push: tags: ["v*"]` also already existed but didn't do anything
+  version-aware — it now drives both the versioning scheme above and
+  which job(s) attempt a release build.
+- **Artifact retention.** Both `upload-artifact` steps set
+  `retention-days: 90` explicitly (GitHub's default varies by repository
+  settings) so build provenance is documented and predictable rather than
+  implicit.
+
+### Why the Gradle cache key is just the Godot version
+
+A cache key normally hashes the actual build files it's caching against
+(`build.gradle`, `gradle-wrapper.properties`) so a dependency change
+invalidates it automatically. Those files don't exist in this repository
+at all — `--install-android-build-template` generates `res://android/`
+fresh from the export templates on every run, and those templates are
+themselves baked into the pinned `barichello/godot-ci` image digest (see
+Phase 0). That means the entire Gradle toolchain version is already
+pinned by the same digest as everything else: it cannot drift without
+`GODOT_VERSION`/the image digest changing too, which is exactly when a
+human bumps the cache key's `-v1` suffix anyway. A coarser key here isn't
+a shortcut — it's the correct key for an environment that's pinned one
+level up already.
+
+### Why export templates get no cache step
+
+Caching exists to avoid a real cost (a network download, a slow rebuild).
+`ci/export_android.sh`'s "move export templates into place" step is a
+local `mv` from one path inside the already-pulled container image to
+another — there is no network fetch to avoid today. Adding
+`actions/cache` around it would add a real cost (uploading/downloading
+through GitHub's cache store) to eliminate a cost that doesn't exist,
+making the pipeline slower for no benefit. If a future image variant
+stops baking templates in and fetches them over the network instead,
+that's the point to add this cache — not before.
+
+### Why the release job is gated per-step, not skipped entirely
+
+An `if:` on the whole `export-android-release` job would make the job
+never appear at all when the secret is missing — indistinguishable, at a
+glance, from a release pipeline that was never built. Gating each
+step past the cheap secret-presence check instead means the job always
+runs, always reports its status (`::notice::` explaining exactly why it
+did nothing), and shows as green — "ready, waiting on you" rather than
+either a false failure or silence.
+
 ## Current status: Phase 5 — Analytics & Rewarded Ads Interfaces
 
 Implemented on top of the verified Phase 4 baseline (unchanged: Godot
