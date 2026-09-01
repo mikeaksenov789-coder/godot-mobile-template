@@ -8,6 +8,47 @@ matrix, phased implementation plan) was delivered to the CTO as
 implementation started. This file tracks build-relevant specifics as they
 land; it does not restate the full spec.
 
+## Current status: Phase 9 — AI Agent Production Handoff
+
+Documentation and protocol only — no code architecture change. Finalized
+`docs/README_FOR_AI_AGENTS.md` into the full implementation-ready
+production handoff protocol (exact Foundation/Gameplay/Presentation
+boundaries, what an agent may/must-never modify, the exact per-game
+clone procedure, required handoff inputs, the visual-package and
+user-supplied-audio integration workflows, the cloud build/test/
+screenshot/APK workflow, failure recovery, and the MVP completion
+checklist), and added a permanent, always-loaded "PERMANENT PRODUCTION
+HANDOFF PROTOCOL" summary section to `CLAUDE.md` pointing to it — the
+same pattern already established for the audio asset rule.
+
+### Phase 8 — Dry-Run Clone / Factory Proof (a separate repository, not this one)
+
+Phase 8 proved the whole pipeline this document now formalizes by
+actually running it: `git clone` + full-history import into a genuinely
+new, separate GitHub repository
+(`mikeaksenov789-coder/godot-mobile-template-dryrun`, a throwaway repo,
+not tracked in this repository's own history), a `diff -rq` confirming
+`addons/core/` came through byte-identical, a minimal placeholder
+Gameplay scene (`game/levels/mvp_level.gd`/`.tscn`) proving
+`SceneRouter`/`ResultFlowController` integration through the public API
+only, a minimal placeholder Presentation material referenced by path
+(proving the swap boundary), and a green cloud CI run — tests,
+validators, smoke test, screenshot capture, and the debug APK build —
+all on the first push, entirely from the pinned `godot-ci` container
+with zero local-machine dependency. `docs/README_FOR_AI_AGENTS.md` §5's
+exact clone procedure and §3's "append-only" extension points
+(`SUITE_SCRIPTS`, `SMOKE_TEST_ROOTS`) are that dry-run's actual
+commands, generalized.
+
+One notable non-finding: unlike Phase 6 and Phase 7's own first CI runs,
+Phase 8's clone needed **zero** CI fix cycles — every gotcha discovered
+building the template (autoload-global-name resolution,
+`GRADLE_USER_HOME`, `$GITHUB_SHA` versioning, the Xvfb/Mesa library
+list) had already been fixed *in* the template, so the clone inherited
+working CI rather than re-discovering the same bugs. That is the whole
+point of hardening these fixes into the template itself rather than
+documenting them as something each new game has to rediscover.
+
 ## Current status: Phase 7 — Automated Validation & Screenshot QA
 
 Implemented on top of the verified Phase 6 baseline (unchanged: Godot
