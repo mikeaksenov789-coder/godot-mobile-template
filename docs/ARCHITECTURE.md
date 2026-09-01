@@ -35,12 +35,21 @@ credentials — this phase is entirely CI/build tooling.
   CI build, not only inside its own unit tests.
 - **Reproducible build environment, validated, not assumed.**
   `ci/validate_environment.sh` runs before either export step and fails
-  fast, with a clear `::error::`, if the Godot version, JDK, Android
-  export templates, or Android SDK path (baked into the godot-ci image's
-  Editor Settings — see Phase 0) aren't where this pipeline expects —
-  proving a fresh CI runner can build from repository state alone rather
-  than discovering a missing piece deep inside a multi-minute gradle
-  build.
+  fast, with a clear `::error::`, if the Godot version, JDK, or Android
+  export templates aren't where this pipeline expects — proving a fresh
+  CI runner can build from repository state alone rather than
+  discovering a missing piece deep inside a multi-minute gradle build.
+  Android SDK location is reported as a best-effort diagnostic, not a
+  hard gate: a first attempt at this script asserted the SDK path must
+  be pre-baked into `$HOME/.config/godot/editor_settings-4.7.tres`
+  (matching a Phase 0 comment about `java_sdk_path`), but CI proved that
+  wrong — `container:` jobs run with `HOME` redirected to
+  `/github/home`, not the godot-ci image's own baked-in home, and
+  `ci/export_android.sh` has built successfully every prior phase
+  without ever writing an `android_sdk_path` anywhere. Wherever the
+  image actually resolves the SDK from in that redirected-HOME context
+  isn't something this script asserts on; the export step itself remains
+  the authoritative check.
 - **Gradle caching.** `actions/cache` caches `~/.gradle/caches` and
   `~/.gradle/wrapper`, keyed on the pinned `GODOT_VERSION` (see "Why the
   Gradle cache key is just the Godot version" below).

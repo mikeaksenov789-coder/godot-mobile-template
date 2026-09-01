@@ -31,15 +31,31 @@ TEMPLATE_FILE_COUNT="$(find "$TEMPLATE_DIR" -type f | wc -l)"
 [ "$TEMPLATE_FILE_COUNT" -gt 0 ] || fail "$TEMPLATE_DIR exists but is empty"
 echo "export templates: $TEMPLATE_DIR ($TEMPLATE_FILE_COUNT files)"
 
-# The godot-ci image pre-bakes the Android SDK path into this exact
-# Editor Settings file (confirmed in Phase 0 — see docs/ARCHITECTURE.md);
-# ci/export_android.sh/ci/export_android_release.sh append java_sdk_path
-# to the same file later, but the SDK path itself must already be there
-# before either script runs.
-SETTINGS_FILE="$HOME/.config/godot/editor_settings-${GODOT_VERSION%.*}.tres"
-[ -f "$SETTINGS_FILE" ] || fail "expected the godot-ci image to pre-bake $SETTINGS_FILE with the Android SDK path, but it does not exist"
-grep -q "android_sdk_path" "$SETTINGS_FILE" || fail "$SETTINGS_FILE exists but has no android_sdk_path set — Android SDK not configured"
-echo "Android SDK path: $(grep "android_sdk_path" "$SETTINGS_FILE")"
+# Best-effort only, deliberately not a hard failure: GitHub Actions'
+# `container:` support runs every step with HOME redirected to
+# /github/home rather than the image's own baked-in home directory,
+# which is also why "Move export templates into place" explicitly `mv`s
+# templates from /root/... — but ci/export_android.sh has built
+# successfully every prior phase without this script ever writing an
+# android_sdk_path anywhere, so wherever the godot-ci image actually
+# resolves the Android SDK from is not $HOME/.config/godot/editor_settings
+# in this container context. Rather than assert on a mechanism this
+# script doesn't actually know, it just reports every plausible signal
+# it can find; the real, authoritative check is the export step itself.
+ANDROID_SDK_FOUND=""
+for candidate in "${ANDROID_SDK_ROOT:-}" "${ANDROID_HOME:-}" "/root/.android/sdk" "/usr/lib/android-sdk" "/opt/android-sdk"; do
+  if [ -n "$candidate" ] && [ -d "$candidate" ]; then
+    ANDROID_SDK_FOUND="$candidate"
+    break
+  fi
+done
+if [ -n "$ANDROID_SDK_FOUND" ]; then
+  echo "Android SDK directory: $ANDROID_SDK_FOUND"
+elif command -v adb >/dev/null 2>&1; then
+  echo "Android SDK: adb found on PATH at $(command -v adb)"
+else
+  echo "::warning::could not positively confirm an Android SDK location via ANDROID_SDK_ROOT/ANDROID_HOME/common install paths/adb on PATH — this is advisory only, not a failure, since the actual export step is the authoritative check and has succeeded in this exact pinned image on every prior phase."
+fi
 
 [ -f "export_presets.cfg" ] || fail "export_presets.cfg not found — checkout did not run, or was run from the wrong directory"
 [ -f "project.godot" ] || fail "project.godot not found — checkout did not run, or was run from the wrong directory"
