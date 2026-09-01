@@ -1,7 +1,13 @@
 # Foundation — Haptics
 
-Not implemented yet — reserved by the approved Master Template Architecture
-(see `docs/ARCHITECTURE.md`). Scheduled for **Phase 3 (Audio, haptics, result flow)** of the implementation
-plan. This directory exists now so the repository shape matches the approved
-structure from Phase 0 onward; do not add gameplay, art, or Foundation code
-here until its phase starts.
+Implemented — Phase 3 (Audio, haptics & result flow).
+
+- `haptics_manager.gd` (autoload `HapticsManager`) — five semantic calls
+  (`light()`, `medium()`, `heavy()`, `success()`, `failure()`) wrapping
+  `Input.vibrate_handheld()`, each with its own tuned duration. Gated by
+  `SettingsManager.vibration_enabled`. There's no way to observe real
+  device vibration headlessly, so `last_triggered_kind`/`trigger_count`/
+  `haptic_triggered` exist specifically so the gating and dispatch logic
+  stays testable without a device.
+
+Tests: `tests/test_haptics_manager.gd`.

@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Godot Mobile Template"
-config/description="Master reusable Godot 4.x Android mobile-game template — Phase 2: input, HUD, pause & settings. See docs/ARCHITECTURE.md."
+config/description="Master reusable Godot 4.x Android mobile-game template — Phase 3: audio, haptics & result flow. See docs/ARCHITECTURE.md."
 run/main_scene="res://scenes/boot.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"
@@ -37,6 +37,10 @@ renderer/rendering_method="mobile"
 textures/vram_compression/import_etc2_astc=true
 anti_aliasing/quality/msaa_3d=0
 
+[audio]
+
+buses/default_bus_layout="res://addons/core/audio/default_bus_layout.tres"
+
 [autoload]
 
 GameManager="*res://addons/core/state/game_manager.gd"
@@ -45,3 +49,6 @@ SaveSystem="*res://addons/core/save/save_system.gd"
 SettingsManager="*res://addons/core/settings/settings_manager.gd"
 PauseController="*res://addons/core/settings/pause_controller.gd"
 InputManager="*res://addons/core/input/input_manager.gd"
+AudioManager="*res://addons/core/audio/audio_manager.gd"
+HapticsManager="*res://addons/core/haptics/haptics_manager.gd"
+ResultFlowController="*res://addons/core/result_flow/result_flow_controller.gd"

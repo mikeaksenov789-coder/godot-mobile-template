@@ -23,7 +23,7 @@ jobs:
           lfs: true
 
       - name: Run test suite
-        run: godot --headless --script res://tests/run_tests.gd
+        run: bash ci/run_tests.sh
 
   export-android-debug:
     name: Android Debug Build

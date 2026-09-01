@@ -8,6 +8,66 @@ matrix, phased implementation plan) was delivered to the CTO as
 implementation started. This file tracks build-relevant specifics as they
 land; it does not restate the full spec.
 
+## Current status: Phase 3 — Audio, Haptics & Result Flow
+
+Implemented on top of the verified Phase 2 baseline (unchanged: Godot
+4.7.2, Jolt, portrait Android, cloud build, state/save/input/HUD/pause/
+settings):
+
+- `addons/core/audio/` (autoload `AudioManager`) — Master/Music/SFX/UI
+  buses (`default_bus_layout.tres`, generated with `AudioServer` itself
+  rather than hand-written — see below), a single music player, and
+  pooled SFX/UI players (idle-preferred, least-recently-used reused
+  otherwise — the pool never grows). Bus volumes mirror SettingsManager;
+  UI has no dedicated setting so it follows `sfx_volume`.
+- `addons/core/haptics/` (autoload `HapticsManager`) — five semantic
+  calls (`light`/`medium`/`heavy`/`success`/`failure`), gated by
+  `vibration_enabled`.
+- `addons/core/result_flow/` (autoload `ResultFlowController` + reusable
+  `result_screen.tscn`) — a generic result payload
+  (`{"outcome": ..., "retry_scene_path": ..., ...}`) drives GameManager
+  Playing -> Result, and Retry/Next/Main Menu back out through
+  SceneRouter. No score/level/gameplay concept anywhere in Foundation.
+- `addons/core/state/game_manager.gd` — Result gained its two Phase-3
+  edges (`Result -> Loading` for Retry/Next, `Result -> MainMenu`),
+  exactly as Phase 1's own comments said it would; the Phase 1 test that
+  asserted Result was a dead end was updated to assert the new, narrower
+  set of allowed edges instead of being deleted.
+- `boot.gd`/`boot.tscn` — now also print Audio/Haptics/ResultFlow
+  readiness.
+- `tests/` grew from 60 to 87 tests (9 to 12 suites), plus a new
+  **scene-instantiation smoke test** (see below) that isn't a suite —
+  it recursively discovers and instantiates every `.tscn` under
+  `addons/core/` and `scenes/`, so a new scene is covered automatically
+  without editing a list.
+
+### Why the smoke test needed a second, CI-shell-level net
+
+GDScript has no try/catch and no error-count API a script can query.
+Phase 2 shipped a real bug — an untyped array literal where
+`LabeledOption.set_options()` expected `Array[String]` — that printed
+`SCRIPT ERROR` and aborted just that `_ready()` call, without
+`instantiate()` returning null and without failing any test's assertions.
+The smoke test in `tests/run_tests.gd` (`_run_scene_smoke_tests`) still
+catches a scene that fails to *load* or *instantiate* outright, but that
+exact class of "silently half-initialized" bug needed a second net:
+`ci/run_tests.sh` runs the whole suite, then greps its captured output
+for the literal string `"SCRIPT ERROR"` and fails the step if found —
+specifically that string, not bare `"ERROR:"`, because normal engine
+shutdown prints benign lines like `"ERROR: N resources still in use at
+exit"` that would otherwise false-positive on every run.
+
+### Why the bus layout is generated, not hand-written
+
+`AudioBusLayout .tres` is a plain enough format to guess at, but Phase 0
+and Phase 2 both turned up engine details that didn't match assumption
+(export option keys, `DisplayServer`'s real header path). Rather than risk
+a third one, `default_bus_layout.tres` was produced by actually calling
+`AudioServer.add_bus()`/`set_bus_name()`/`set_bus_send()` against this
+exact 4.7.2 binary, then `AudioServer.generate_bus_layout()` +
+`ResourceSaver.save()` — the file committed to the repo is that generated
+output verbatim, not a hand-typed guess.
+
 ## Current status: Phase 2 — Input, HUD, Pause & Settings
 
 Implemented on top of the verified Phase 1 baseline (unchanged: Godot

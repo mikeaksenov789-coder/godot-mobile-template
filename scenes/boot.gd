@@ -2,7 +2,7 @@ extends Control
 
 
 func _ready() -> void:
-	print("Godot Mobile Template — Phase 2 skeleton booted OK.")
+	print("Godot Mobile Template — Phase 3 skeleton booted OK.")
 	print("Physics engine: ", ProjectSettings.get_setting("physics/3d/physics_engine"))
 
 	GameManager.state_changed.connect(_on_game_manager_state_changed)
@@ -15,6 +15,12 @@ func _ready() -> void:
 	])
 	print("InputManager profile loaded: ", InputManager.profile != null)
 	print("PauseController ready, is_paused=", PauseController.is_paused)
+	print("AudioManager buses: Master=%d Music=%d SFX=%d UI=%d" % [
+		AudioServer.get_bus_index("Master"), AudioServer.get_bus_index("Music"),
+		AudioServer.get_bus_index("SFX"), AudioServer.get_bus_index("UI"),
+	])
+	print("HapticsManager ready, trigger_count=", HapticsManager.trigger_count)
+	print("ResultFlowController ready, current_payload=", ResultFlowController.current_payload)
 
 
 func _on_game_manager_state_changed(previous_state: GameManager.State, new_state: GameManager.State) -> void:

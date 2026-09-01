@@ -6,6 +6,7 @@ extends CanvasLayer
 
 const SETTINGS_SCREEN_SCENE := preload("res://addons/core/hud/settings_screen.tscn")
 const PAUSE_OVERLAY_SCENE := preload("res://addons/core/hud/pause_overlay.tscn")
+const RESULT_SCREEN_SCENE := preload("res://addons/core/result_flow/result_screen.tscn")
 
 @onready var safe_area: Control = $SafeArea
 @onready var content_root: Control = $SafeArea/Content
@@ -13,12 +14,15 @@ const PAUSE_OVERLAY_SCENE := preload("res://addons/core/hud/pause_overlay.tscn")
 
 var _settings_screen: Control = null
 var _pause_overlay: Control = null
+var _result_screen: Control = null
 
 
 func _ready() -> void:
 	_pause_button.pressed.connect(_on_pause_button_pressed)
 	PauseController.paused.connect(_on_game_paused)
 	PauseController.resumed.connect(_on_game_resumed)
+	ResultFlowController.result_shown.connect(_on_result_shown)
+	GameManager.state_changed.connect(_on_game_manager_state_changed)
 
 
 func _on_pause_button_pressed() -> void:
@@ -57,3 +61,17 @@ func show_settings() -> void:
 func hide_settings() -> void:
 	if _settings_screen != null:
 		_settings_screen.hide()
+
+
+func _on_result_shown(payload: Dictionary) -> void:
+	if _result_screen == null:
+		_result_screen = RESULT_SCREEN_SCENE.instantiate()
+		_result_screen.process_mode = Node.PROCESS_MODE_ALWAYS
+		add_child(_result_screen)
+	_result_screen.display_result(payload)
+	_result_screen.show()
+
+
+func _on_game_manager_state_changed(_previous_state, new_state) -> void:
+	if _result_screen != null and new_state != GameManager.State.RESULT:
+		_result_screen.hide()

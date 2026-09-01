@@ -31,14 +31,22 @@ func test_invalid_transition_is_rejected() -> void:
 	assert_eq(_gm.current_state, _gm.State.BOOT, "state must not change on a rejected transition")
 
 
-func test_result_is_a_dead_end_in_phase_1() -> void:
+func test_result_allows_only_loading_and_main_menu() -> void:
+	# As of Phase 3 (Result Flow), Result -> Loading (Retry/Next) and
+	# Result -> MainMenu are valid; nothing else is. This test superseded
+	# Phase 1's "Result is a dead end" test, which explicitly documented
+	# that Phase 3 would add exactly these edges.
 	_gm.transition_to(_gm.State.MAIN_MENU)
 	_gm.transition_to(_gm.State.LOADING)
 	_gm.transition_to(_gm.State.PLAYING)
 	_gm.transition_to(_gm.State.RESULT)
-	assert_false(_gm.transition_to(_gm.State.MAIN_MENU),
-		"Result has no outgoing edges in Phase 1 — retry/back-to-menu is Result Flow (Phase 3)")
-	assert_eq(_gm.current_state, _gm.State.RESULT)
+
+	assert_false(_gm.transition_to(_gm.State.PLAYING), "Result -> Playing directly must be rejected")
+	assert_false(_gm.transition_to(_gm.State.PAUSED), "Result -> Paused must be rejected")
+	assert_false(_gm.transition_to(_gm.State.BOOT), "Result -> Boot must be rejected")
+	assert_eq(_gm.current_state, _gm.State.RESULT, "none of the rejected calls above may have moved the state")
+
+	assert_true(_gm.transition_to(_gm.State.MAIN_MENU), "Result -> MainMenu should be allowed")
 
 
 func test_state_changed_signal_emits_with_correct_args() -> void:

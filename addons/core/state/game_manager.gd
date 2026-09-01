@@ -4,11 +4,13 @@ extends Node
 ## `current_state` directly — call `transition_to()` and react to
 ## `state_changed` instead.
 ##
-## Phase 1 implements exactly the approved chain:
-##   Boot -> MainMenu -> Loading -> Playing <-> Paused -> Result
-## Result is a dead end here on purpose: retry/back-to-menu edges belong to
-## the Result Flow system (Phase 3) and are added to _TRANSITIONS then, not
-## guessed at now.
+## Phase 1 implemented the approved chain Boot -> MainMenu -> Loading ->
+## Playing <-> Paused -> Result, with Result as a dead end on purpose:
+## retry/back-to-menu edges were deferred to the Result Flow system
+## (Phase 3). Phase 3's ResultFlowController now drives the two edges out
+## of Result added below — Retry and Next both re-enter through Loading
+## (they're "leave Result to load a scene", differing only in which scene
+## SceneRouter loads), Main Menu goes straight to MainMenu.
 
 enum State {
 	BOOT,
@@ -25,7 +27,7 @@ const _TRANSITIONS: Dictionary = {
 	State.LOADING: [State.PLAYING],
 	State.PLAYING: [State.PAUSED, State.RESULT],
 	State.PAUSED: [State.PLAYING],
-	State.RESULT: [],
+	State.RESULT: [State.LOADING, State.MAIN_MENU],
 }
 
 signal state_changed(previous_state: State, new_state: State)

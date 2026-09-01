@@ -15,17 +15,20 @@ reconsider the API rather than special-case it.
 | Path | Owns | Status |
 |---|---|---|
 | `project.godot`, `export_presets.cfg` | Engine/Android/Jolt config | Done (Phase 0) |
-| `scenes/boot.tscn` | Boot entry point | Done (Phase 0/1/2), placeholder content only — drives GameManager Boot -> MainMenu and instantiates HUDLayer |
-| `addons/core/state/` | GameManager (FSM), SceneRouter | Done (Phase 1) |
+| `scenes/boot.tscn` | Boot entry point | Done (Phase 0-3), placeholder content only — drives GameManager Boot -> MainMenu and instantiates HUDLayer |
+| `addons/core/state/` | GameManager (FSM), SceneRouter | Done (Phase 1); Result edges added Phase 3 |
 | `addons/core/save/` | SaveSystem (versioned, atomic, migrating) | Done (Phase 1) |
 | `addons/core/input/` | InputManager (gestures), InputProfile, VirtualJoystick | Done (Phase 2) |
-| `addons/core/hud/` | HUDLayer, SafeArea, Settings screen, reusable widgets, Theme | Done (Phase 2) |
+| `addons/core/hud/` | HUDLayer, SafeArea, Settings screen, reusable widgets, Theme | Done (Phase 2); Result screen added Phase 3 |
 | `addons/core/settings/` | PauseController, SettingsManager | Done (Phase 2) |
-| `addons/core/{audio,haptics,result_flow,performance,pooling,analytics,ads}/` | Remaining Foundation systems | Empty, see each folder's `README.md` for its phase |
-| `tests/` | Headless test suite (custom runner, no third-party addon) | Done (Phase 1/2) — 9 suites, 60 tests: state/save/router/input/HUD/settings |
+| `addons/core/audio/` | AudioManager, bus layout | Done (Phase 3) |
+| `addons/core/haptics/` | HapticsManager | Done (Phase 3) |
+| `addons/core/result_flow/` | ResultFlowController, result screen | Done (Phase 3) |
+| `addons/core/{performance,pooling,analytics,ads}/` | Remaining Foundation systems | Empty, see each folder's `README.md` for its phase |
+| `tests/` | Headless test suite (custom runner, no third-party addon) + scene smoke test | Done (Phase 1-3) — 12 suites, 87 tests, + auto-discovering smoke test over every `.tscn` under `addons/core/` and `scenes/` |
 | `game/` | Per-game gameplay logic | Empty — do not populate before an actual MVP is approved |
 | `presentation/` | Per-game art/VFX/audio | Empty — do not populate before an actual MVP is approved |
-| `ci/` | Build environment + export scripts | Debug Android export only (Phase 0); `tests/run_tests.gd` gates it (Phase 1) |
+| `ci/` | Build environment + export/test scripts | Debug Android export only (Phase 0); `ci/run_tests.sh` gates it (Phase 1, hardened Phase 3) |
 | `tools/validation/` | Automated validation rule definitions | Empty until Phase 7 |
 | `docs/ARCHITECTURE.md` | Build-relevant architecture notes | Living document |
 
@@ -48,11 +51,15 @@ reconsider the API rather than special-case it.
 5. Never commit a keystore, keystore password, or any other signing
    secret. Release signing is CI-secret-injected only (see
    `docs/ARCHITECTURE.md`).
-6. A green `tests/run_tests.gd` run is not proof a `.tscn` scene actually
-   loads — unit tests exercise autoload singletons directly and don't
-   instantiate every scene. Before pushing a new/changed `.tscn`,
-   headlessly `load()` and `instantiate()` it (and its lazily-created
-   children, if any) at least once; Phase 2 shipped a real bug
-   (`Array[String]` vs. a plain array literal) that 60/60 passing unit
-   tests didn't catch because none of them touched the scene file it was
-   in.
+6. `tests/run_tests.gd` now includes a scene-instantiation smoke test that
+   auto-discovers and instantiates every `.tscn` under `addons/core/` and
+   `scenes/` — a new/moved scene is covered automatically, nothing to add
+   to a list. It still can't catch everything: GDScript has no try/catch,
+   so a runtime type error mid-`_ready()` (Phase 2's `Array[String]` bug)
+   prints `SCRIPT ERROR` and aborts just that function without failing
+   the smoke test or any assertion. `ci/run_tests.sh` greps the whole
+   test run's output for `"SCRIPT ERROR"` as the actual safety net for
+   that class of bug — if you ever run the test suite by calling
+   `godot --headless --script res://tests/run_tests.gd` directly instead
+   of `bash ci/run_tests.sh`, re-check the output for that string
+   yourself; a clean exit code alone is not enough.
