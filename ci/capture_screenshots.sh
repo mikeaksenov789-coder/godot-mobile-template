@@ -7,11 +7,17 @@
 # not visual rendering, so neither is guaranteed to be present.
 set -euo pipefail
 
-if ! command -v xvfb-run >/dev/null 2>&1; then
-  echo "xvfb-run not found — installing Xvfb and a software OpenGL renderer..."
-  apt-get update -qq
-  apt-get install -y --no-install-recommends xvfb libgl1-mesa-dri libglx-mesa0
-fi
+# Always installed, not just when xvfb-run is missing: the first real CI
+# run had xvfb-run absent (triggering this branch) but still failed —
+# Godot's X11 backend also needs libfontconfig1/libxcursor1, which
+# aren't pulled in as dependencies of xvfb/mesa alone, and their absence
+# silently fell through to a Wayland fallback that isn't installed
+# either ("Unable to create DisplayServer, all display drivers failed").
+# apt no-ops on anything already present, so this is cheap to always run.
+echo "Installing Xvfb and X11/Mesa runtime libraries for screenshot capture..."
+apt-get update -qq
+apt-get install -y --no-install-recommends \
+  xvfb libgl1-mesa-dri libglx-mesa0 libfontconfig1 libxcursor1 libxi6 libxinerama1 libxrandr2
 
 rm -rf screenshots
 mkdir -p screenshots
