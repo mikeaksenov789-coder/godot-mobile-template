@@ -29,6 +29,36 @@ jobs:
       - name: Run tests, validators & smoke test
         run: bash ci/run_tests.sh
 
+  screenshot-qa:
+    name: Screenshot QA
+    needs: run-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    container:
+      image: barichello/godot-ci@sha256:cdcca31e9194fd59a68a63f4b1b9c3981716819c520cd6f7966c5d72ca7246bd
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # tools/qa/screenshot_capture.gd boots the real boot.tscn and
+      # captures a PNG at five defined checkpoints (Boot/Main Menu,
+      # Settings, Pause, Result Victory, Result Failure) — this needs an
+      # actual rendered viewport, unlike every other CI stage, so it runs
+      # under Xvfb + Mesa's software OpenGL renderer rather than
+      # --headless. See docs/ARCHITECTURE.md Phase 7.
+      - name: Capture QA screenshots
+        run: bash ci/capture_screenshots.sh
+
+      - name: Upload screenshot artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.EXPORT_NAME }}-qa-screenshots
+          path: screenshots/*.png
+          if-no-files-found: error
+          retention-days: 90
+
   export-android-debug:
     name: Android Debug Build
     needs: run-tests

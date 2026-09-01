@@ -21,3 +21,7 @@ Thumbs.db
 
 # ci/run_tests.sh's local output capture
 test_output.log
+
+# tools/qa/screenshot_capture.gd's QA screenshot output (CI artifact, not
+# a repository asset — see docs/ARCHITECTURE.md Phase 7)
+/screenshots/

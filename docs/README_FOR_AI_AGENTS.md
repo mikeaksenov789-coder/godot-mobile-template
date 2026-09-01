@@ -15,7 +15,7 @@ reconsider the API rather than special-case it.
 | Path | Owns | Status |
 |---|---|---|
 | `project.godot`, `export_presets.cfg` | Engine/Android/Jolt config | Done (Phase 0) |
-| `scenes/boot.tscn` | Boot entry point | Done (Phase 0-6), placeholder content only — drives GameManager Boot -> MainMenu and instantiates HUDLayer |
+| `scenes/boot.tscn` | Boot entry point | Done (Phase 0-7), placeholder content only — drives GameManager Boot -> MainMenu and instantiates HUDLayer |
 | `addons/core/state/` | GameManager (FSM), SceneRouter | Done (Phase 1); Result edges added Phase 3 |
 | `addons/core/save/` | SaveSystem (versioned, atomic, migrating) | Done (Phase 1) |
 | `addons/core/input/` | InputManager (gestures), InputProfile, VirtualJoystick | Done (Phase 2) |
@@ -28,11 +28,12 @@ reconsider the API rather than special-case it.
 | `addons/core/pooling/` | PoolManager, VFXPool, VFXBank | Done (Phase 4) |
 | `addons/core/analytics/` | AnalyticsService (generic API + Foundation-flow hooks) | Done (Phase 5); no real analytics SDK integrated |
 | `addons/core/ads/` | AdsService (rewarded only), AdsBackend, MockAdsBackend | Done (Phase 5); no real ad SDK integrated |
-| `tests/` | Unit suites (`run_tests.gd`) + scene smoke test (`run_smoke_test.gd`, split out Phase 6) | Done (Phase 1-6) — 18 suites, 144 tests, + auto-discovering smoke test over every `.tscn` under `addons/core/` and `scenes/` (9 scenes) |
+| `tests/` | Unit suites (`run_tests.gd`) + scene smoke test (`run_smoke_test.gd`, split out Phase 6) | Done (Phase 1-7) — 19 suites, 158 tests, + auto-discovering smoke test over every `.tscn` under `addons/core/` and `scenes/` (9 scenes) |
 | `game/` | Per-game gameplay logic | Empty — do not populate before an actual MVP is approved |
 | `presentation/` | Per-game art/VFX/audio | Empty — do not populate before an actual MVP is approved |
-| `ci/` | Build environment + versioning/env-validation/export scripts | Debug APK + release AAB paths (release gated on a signing secret), automatic versioning, Gradle cache, environment validation (Phase 6) |
-| `tools/validation/` | Content validation rules (`performance_validator.gd`) + CI gate (`run_validation.gd`) | Advisory checks implemented (Phase 4, pulled forward); runs as its own CI stage (Phase 6); broader validation (draw-call estimation, missing-reference scanning) still Phase 7 |
+| `ci/` | Build environment + versioning/env-validation/export/QA scripts | Debug APK + release AAB paths (release gated on a signing secret), automatic versioning, Gradle cache, environment validation (Phase 6), screenshot capture (Phase 7) |
+| `tools/validation/` | Content/Foundation validation rules (`performance_validator.gd`, `foundation_validator.gd`) + CI gate (`run_validation.gd`) | Done (Phase 4/6/7) — runs as its own CI stage; see its own `README.md` for what each validator checks |
+| `tools/qa/` | Screenshot QA (`screenshot_capture.gd`) | Done (Phase 7) — 5 checkpoints, own CI job, uploads PNG artifacts |
 | `docs/ARCHITECTURE.md` | Build-relevant architecture notes | Living document |
 
 ## Before doing new work here
@@ -75,3 +76,17 @@ reconsider the API rather than special-case it.
    `version/name` in place before every export — never hand-edit those
    two lines in `export_presets.cfg` expecting them to stick; they're
    overwritten by every CI build (see `docs/ARCHITECTURE.md` Phase 6).
+8. This template reserves collision bits 0-7 (Godot layers 1-8) as the
+   physics layer convention `foundation_validator.gd`'s
+   `check_physics_layer_convention()` enforces — nothing uses any of
+   them yet (no gameplay ships real physics content), so the first
+   phase that adds physics content must also document what each of
+   layers 1-8 means (a short table in `docs/ARCHITECTURE.md` is the
+   natural place) before using bit 8+ (layer 9+) gets flagged.
+9. Any new `--script` bootstrap entry point (another `tools/*.gd` or
+   `tests/*.gd` file run via `godot --script <path>`) cannot reference
+   an autoload by its global name (`GameManager.foo()` fails to
+   compile there) — reach every autoload via `root.get_node("Name")`
+   instead. This has now bitten `tests/run_tests.gd` (Phase 1) and
+   `tools/qa/screenshot_capture.gd` (Phase 7) independently; it is not
+   specific to either one.

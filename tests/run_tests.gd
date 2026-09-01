@@ -44,6 +44,7 @@ const SUITE_SCRIPTS: Array[String] = [
 	"res://tests/test_performance_validator.gd",
 	"res://tests/test_analytics_service.gd",
 	"res://tests/test_ads_service.gd",
+	"res://tests/test_foundation_validator.gd",
 ]
 
 

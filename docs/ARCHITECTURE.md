@@ -8,6 +8,95 @@ matrix, phased implementation plan) was delivered to the CTO as
 implementation started. This file tracks build-relevant specifics as they
 land; it does not restate the full spec.
 
+## Current status: Phase 7 — Automated Validation & Screenshot QA
+
+Implemented on top of the verified Phase 6 baseline (unchanged: Godot
+4.7.2, Jolt, cloud-first build pipeline, all Foundation systems through
+Phase 6). No gameplay, no final art, no Phase 8+ systems.
+
+- **`tools/validation/foundation_validator.gd` (new).** A second
+  validator, alongside `performance_validator.gd`, for a different
+  concern: Foundation configuration and content references rather than
+  rendering budget.
+  - `check_required_autoloads(root)` — every autoload
+    `project.godot` registers must actually be present under the
+    running tree's root.
+  - `check_broken_references(scene_path)` — reads a `.tscn` as text and
+    flags any `res://` `ext_resource` path that doesn't resolve.
+  - `check_physics_layer_convention(scene_root)` — flags a
+    `CollisionObject2D`/`3D` node using collision bit 9+ (layer 9+); see
+    "The physics layer convention" below.
+  - `check_theme_resource(theme_path)` / `check_bank_hooks(root)` —
+    flag a missing/incomplete HUD theme, a `VFXPool` with no bank
+    assigned, or a missing Foundation audio bus.
+  - `validate_foundation_configuration(root)` aggregates the three
+    root-level checks into the "invalid Foundation configuration" gate.
+- **`tools/validation/run_validation.gd` finalized.** Now runs both
+  validators together: every per-scene `performance_validator.gd` +
+  `foundation_validator.gd` check against every real scene under
+  `addons/core/` and `scenes/`, plus one
+  `validate_foundation_configuration()` pass against the live root —
+  still the same CI stage introduced in Phase 6, just covering
+  everything Phase 7 added too.
+- **`tools/qa/screenshot_capture.gd` (new) + `ci/capture_screenshots.sh`.**
+  Boots the real `scenes/boot.tscn` under Xvfb + Mesa's software OpenGL
+  renderer and captures a PNG at five required checkpoints — Boot/Main
+  Menu, Settings, Pause, Result Victory, Result Failure — via the exact
+  public methods a real player's input would reach
+  (`HUDLayer.show_settings()`, `PauseController.pause()`,
+  `ResultFlowController.show_result()`), never by poking private state.
+  Wired into CI as its own `Screenshot QA` job, parallel with the
+  Android builds, uploading the five PNGs as a workflow artifact. See
+  "Why screenshots need Xvfb, not `--headless`" below.
+- `tests/` grew from 144 to 158 tests (18 to 19 suites) — no new `.tscn`
+  scenes, so the smoke test still covers the same 9 scenes.
+
+### The physics layer convention
+
+No gameplay ships real physics content yet, so nothing currently uses
+any collision layer at all — `check_physics_layer_convention()` passes
+trivially on every scene today. The convention it enforces exists
+anyway, ahead of need, exactly like `PerformanceManager`'s budgets did
+before Phase 4 had anything to spend them on: this template reserves
+collision bits 0-7 (Godot layers 1-8) for whatever a future game
+documents each one as meaning; a scene using bit 8+ (layer 9+) on either
+`collision_layer` or `collision_mask` is flagged as undocumented. The
+first phase that actually adds physics content is the one that must
+also document what layers 1-8 mean here (a short table in this file is
+the natural place) — this validator only enforces that nothing sneaks
+past that documentation step unnoticed.
+
+### Why screenshots need Xvfb, not `--headless`
+
+Every other `--script` entry point in this repo runs
+`--headless`, which has no rendering context at all — fine for tests,
+validators, and the smoke test, none of which need real pixels, but
+useless for a screenshot (`get_texture().get_image()` on a headless
+viewport produces nothing meaningful). `tools/qa/screenshot_capture.gd`
+instead runs under `xvfb-run` (a virtual X display) with
+`--rendering-method gl_compatibility --rendering-driver opengl3` forced
+explicitly, rather than the project's default Forward+ Mobile (Vulkan)
+renderer — Mesa's OpenGL software rasterizer (llvmpipe) is a much more
+commonly available CI/sandbox dependency than a working software Vulkan
+ICD (lavapipe). This was verified end-to-end, not assumed: a local dry
+run in this exact sandbox (which has Xvfb and Mesa already installed)
+produced five real, correctly-rendered 1080x2340 PNGs showing actual HUD
+content, not blank frames — and `ci/capture_screenshots.sh` installs
+both Xvfb and the Mesa GL packages defensively before running, since the
+pinned `godot-ci` image is built for headless export and neither is
+guaranteed to already be there.
+
+### A second `--script`-bootstrap autoload gotcha, confirmed again
+
+`tests/run_tests.gd`'s own doc comment already documented that autoload
+global names (`GameManager.foo()`) don't resolve inside a `--script`
+bootstrap file. `screenshot_capture.gd` hit the exact same thing on its
+first local dry run — a bare `PauseController.pause()` failed to
+compile with "Identifier not found: PauseController" — confirming this
+isn't specific to the test runner, it's every `--script` entry point in
+this engine build. Fixed the same way every other one in this repo is:
+`root.get_node("Name")` instead of the bare global.
+
 ## Current status: Phase 6 — Cloud Build Pipeline Hardening
 
 Implemented on top of the verified Phase 5 baseline (unchanged: Godot
