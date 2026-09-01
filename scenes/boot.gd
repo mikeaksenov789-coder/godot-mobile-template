@@ -2,7 +2,7 @@ extends Control
 
 
 func _ready() -> void:
-	print("Godot Mobile Template — Phase 4 skeleton booted OK.")
+	print("Godot Mobile Template — Phase 5 skeleton booted OK.")
 	print("Physics engine: ", ProjectSettings.get_setting("physics/3d/physics_engine"))
 
 	GameManager.state_changed.connect(_on_game_manager_state_changed)
@@ -26,6 +26,8 @@ func _ready() -> void:
 		PerformanceManager.shadows_enabled(), PerformanceManager.get_max_active_lights(),
 	])
 	print("PoolManager ready, VFXPool bank loaded=", VFXPool.bank != null)
+	print("AnalyticsService ready, last_event=", AnalyticsService.last_event_name)
+	print("AdsService ready, rewarded_ready(demo)=", AdsService.is_rewarded_ready("demo"))
 
 
 func _on_game_manager_state_changed(previous_state: GameManager.State, new_state: GameManager.State) -> void:

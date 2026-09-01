@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Godot Mobile Template"
-config/description="Master reusable Godot 4.x Android mobile-game template — Phase 4: performance & pooling. See docs/ARCHITECTURE.md."
+config/description="Master reusable Godot 4.x Android mobile-game template — Phase 5: analytics & rewarded ads interfaces. See docs/ARCHITECTURE.md."
 run/main_scene="res://scenes/boot.tscn"
 config/features=PackedStringArray("4.7", "Mobile")
 config/icon="res://icon.svg"
@@ -55,3 +55,5 @@ ResultFlowController="*res://addons/core/result_flow/result_flow_controller.gd"
 PerformanceManager="*res://addons/core/performance/performance_manager.gd"
 PoolManager="*res://addons/core/pooling/pool_manager.gd"
 VFXPool="*res://addons/core/pooling/vfx_pool.gd"
+AnalyticsService="*res://addons/core/analytics/analytics_service.gd"
+AdsService="*res://addons/core/ads/ads_service.gd"

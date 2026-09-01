@@ -8,6 +8,67 @@ matrix, phased implementation plan) was delivered to the CTO as
 implementation started. This file tracks build-relevant specifics as they
 land; it does not restate the full spec.
 
+## Current status: Phase 5 — Analytics & Rewarded Ads Interfaces
+
+Implemented on top of the verified Phase 4 baseline (unchanged: Godot
+4.7.2, Jolt, portrait Android, cloud build, state/save/input/HUD/pause/
+settings/audio/haptics/result flow/performance/pooling). No gameplay, no
+final art, no Phase 6+ systems, no real analytics/ad SDK, no credentials.
+
+- `addons/core/analytics/` (autoload `AnalyticsService`) — a generic
+  `log_event(name, params)` / `set_user_property(name, value)` /
+  `screen_view(name)` API backed by `analytics_backend.gd`, whose base
+  implementation IS the safe no-op default. Also wires itself into
+  existing Foundation flows entirely inside its own `_ready()` — app
+  boot, GameManager state transitions, pause/resume, and
+  ResultFlowController's result-shown/retry/next/main-menu signals —
+  so every future game gets baseline analytics coverage with zero
+  per-game integration code.
+- `addons/core/ads/` (autoload `AdsService`) — rewarded ads only:
+  `is_rewarded_ready(placement_id)` / `show_rewarded(placement_id)`,
+  backed by `ads_backend.gd` (the real default: never ready, always a
+  graceful failure) with a separate, opt-in `mock_ads_backend.gd` for
+  development/testing that can simulate readiness and outcome. Adds
+  per-game configuration hooks — `configure_placements()`,
+  `set_frequency_cap()`, `set_backend()` — and a frequency cap enforced
+  before ever asking the backend. Outcomes arrive via
+  `rewarded_ad_completed`/`rewarded_ad_failed` signals, since a real ad
+  SDK is inherently asynchronous; gameplay is never allowed to assume an
+  ad is available.
+- `boot.gd`/`boot.tscn` — now also print AnalyticsService/AdsService
+  readiness.
+- `tests/` grew from 122 to 144 tests (16 to 18 suites); no new `.tscn`
+  scenes this phase, so the smoke test still covers the same 9 scenes.
+
+### Why the Foundation-flow hooks live inside AnalyticsService itself
+
+The alternative — having `boot.gd`, `PauseController`, and
+`ResultFlowController` each call `AnalyticsService.log_event()` directly
+— would mean every Foundation system needs to know analytics exists, and
+a future game copying/extending any one of them has to remember to keep
+that call in sync. Instead `AnalyticsService`'s own `_ready()` subscribes to
+`GameManager.state_changed`, `PauseController.paused`/`resumed`, and
+`ResultFlowController.result_shown`/`retry_requested`/`next_requested`/
+`main_menu_requested` itself. This is safe specifically
+because `AnalyticsService` is declared after all of those in
+`project.godot`'s autoload order (autoloads are ready in declaration
+order, and a script can reference another already-ready autoload's
+global name directly in its own `_ready()` — the same pattern
+`audio_manager.gd` already uses for `SettingsManager.settings_changed`).
+
+### Why AdsService's real default and the mock backend are two separate files
+
+`ads_backend.gd` alone (never ready, always a graceful failure) is what
+ships wired in — genuinely a no-op, indistinguishable in behavior from
+"no ads integrated at all". `mock_ads_backend.gd` is a second, explicitly
+opt-in file (extends the first) that can simulate a loaded/ready ad and
+either outcome, entirely for local development and deterministic testing
+of the success/failure/frequency-cap paths without a real SDK. Keeping
+them separate means `is_rewarded_ready()`'s true out-of-the-box default
+is provably `false` (tested directly against the real default), while the
+mock is still available and documented as the thing to swap in during
+development — neither compromises the other.
+
 ## Current status: Phase 4 — Performance & Pooling
 
 Implemented on top of the verified Phase 3 baseline (unchanged: Godot

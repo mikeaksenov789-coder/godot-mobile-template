@@ -32,6 +32,8 @@ const SUITE_SCRIPTS: Array[String] = [
 	"res://tests/test_pool_manager.gd",
 	"res://tests/test_vfx_pool.gd",
 	"res://tests/test_performance_validator.gd",
+	"res://tests/test_analytics_service.gd",
+	"res://tests/test_ads_service.gd",
 ]
 
 ## Roots recursively scanned for .tscn files by the scene-instantiation
