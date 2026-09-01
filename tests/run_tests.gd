@@ -28,6 +28,10 @@ const SUITE_SCRIPTS: Array[String] = [
 	"res://tests/test_audio_manager.gd",
 	"res://tests/test_haptics_manager.gd",
 	"res://tests/test_result_flow_controller.gd",
+	"res://tests/test_performance_manager.gd",
+	"res://tests/test_pool_manager.gd",
+	"res://tests/test_vfx_pool.gd",
+	"res://tests/test_performance_validator.gd",
 ]
 
 ## Roots recursively scanned for .tscn files by the scene-instantiation

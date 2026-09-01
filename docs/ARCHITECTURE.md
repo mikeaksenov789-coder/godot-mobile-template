@@ -8,6 +8,76 @@ matrix, phased implementation plan) was delivered to the CTO as
 implementation started. This file tracks build-relevant specifics as they
 land; it does not restate the full spec.
 
+## Current status: Phase 4 — Performance & Pooling
+
+Implemented on top of the verified Phase 3 baseline (unchanged: Godot
+4.7.2, Jolt, portrait Android, cloud build, state/save/input/HUD/pause/
+settings/audio/haptics/result flow). No gameplay, no final art, no
+Phase 5+ systems.
+
+- `addons/core/performance/` (autoload `PerformanceManager`) — exactly
+  two presets, LOW/HIGH. `apply_preset()` touches live `Viewport` state
+  only (`scaling_3d_scale`, `positional_shadow_atlas_size`, `msaa_3d`);
+  `set_preset()` additionally persists through
+  `SettingsManager.set_graphics_quality()`, so LOW/HIGH survives a
+  restart the same way every other setting does, and reapplies
+  automatically on `settings_changed` (e.g. when the Settings screen's
+  existing Graphics LOW/HIGH control changes it — Phase 2 already built
+  that UI, Phase 4 just gave it a real backing system). Exposes advisory
+  getters (`get_max_active_lights()`, `get_particle_amount_ratio()`,
+  `shadows_enabled()`, `use_simplified_materials()`) for content and
+  tooling to consult voluntarily.
+- `addons/core/pooling/` (autoloads `PoolManager`, `VFXPool`, plus a
+  `vfx_bank.gd` Resource type and an empty `default_vfx_bank.tres`) —
+  generic acquire/release object pooling with prewarm and a capacity
+  cap, and a `GPUParticles3D`-based VFX layer built on top of it
+  (`play(vfx_id, transform)`), so no game-side hot loop needs to
+  `instantiate()`/`free()` directly. No VFX art ships yet — the bank is
+  empty on purpose (Phase 4 has no final art).
+- `tools/validation/performance_validator.gd` — static scene-tree
+  checks pulled forward from Phase 7 at the CTO's request: excessive
+  light count against a budget, a single mesh resource repeated past a
+  threshold (a common accidental draw-call cost), and node names
+  signalling leftover placeholder/greybox content. Advisory only, not
+  yet wired into a CI gate — see `tools/validation/README.md`.
+- `boot.gd`/`boot.tscn` — now also print PerformanceManager/PoolManager/
+  VFXPool readiness.
+- `tests/` grew from 87 to 122 tests (12 to 16 suites); no new `.tscn`
+  scenes this phase, so the smoke test still covers the same 9 scenes.
+
+### Why performance budgets are advisory, not enforced
+
+Godot has no engine-level hard cap on active lights or particle count —
+nothing stops a scene from exceeding `PerformanceManager`'s numbers, the
+engine will just render it, slowly. `get_max_active_lights()` etc. are
+therefore a convention future content and `performance_validator.gd` opt
+into voluntarily, not a runtime limiter. Actually gating content on these
+budgets (failing a build, refusing to instantiate) is a bigger,
+deliberate decision that belongs with the rest of Phase 7's CI wiring,
+not smuggled into Phase 4.
+
+### Why `PackedScene.pack()` for pooling/VFX test fixtures
+
+`PoolManager`, `VFXPool`, and `performance_validator.gd`'s tests all need
+throwaway scenes (a bare `Node3D`, a minimal `GPUParticles3D`) without
+shipping placeholder `.tscn` files that would themselves look like
+production content to `check_placeholder_markers()`. Building a node in
+code and calling `PackedScene.pack(node)` produces a real, valid
+`PackedScene` for `PoolManager.register_pool()`/`VFXPool.play()` to
+instantiate from, entirely in memory — confirmed working against this
+engine build, and it keeps every pooling/VFX test self-contained.
+
+### A prewarm behavior worth flagging for future test-writers
+
+`VFXPool.play()` registers its `PoolManager` pool (prewarm size 4, cap
+16) lazily, on first use per `vfx_id` — not at boot. The first `play()`
+call for a given effect therefore prewarms *all 4* instances at once,
+not just the one being played. A test that plays one effect, lets it
+finish, and then asserts exactly one instance is back in the "available"
+pool will get 4, not 1 — this genuinely is how the pool is meant to
+behave (prewarm-then-reuse), so the correct assertion compares against
+`PoolManager.get_pool_size()` rather than a hardcoded `1`.
+
 ## Current status: Phase 3 — Audio, Haptics & Result Flow
 
 Implemented on top of the verified Phase 2 baseline (unchanged: Godot

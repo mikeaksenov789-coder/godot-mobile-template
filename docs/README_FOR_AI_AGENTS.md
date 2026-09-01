@@ -15,7 +15,7 @@ reconsider the API rather than special-case it.
 | Path | Owns | Status |
 |---|---|---|
 | `project.godot`, `export_presets.cfg` | Engine/Android/Jolt config | Done (Phase 0) |
-| `scenes/boot.tscn` | Boot entry point | Done (Phase 0-3), placeholder content only — drives GameManager Boot -> MainMenu and instantiates HUDLayer |
+| `scenes/boot.tscn` | Boot entry point | Done (Phase 0-4), placeholder content only — drives GameManager Boot -> MainMenu and instantiates HUDLayer |
 | `addons/core/state/` | GameManager (FSM), SceneRouter | Done (Phase 1); Result edges added Phase 3 |
 | `addons/core/save/` | SaveSystem (versioned, atomic, migrating) | Done (Phase 1) |
 | `addons/core/input/` | InputManager (gestures), InputProfile, VirtualJoystick | Done (Phase 2) |
@@ -24,12 +24,14 @@ reconsider the API rather than special-case it.
 | `addons/core/audio/` | AudioManager, bus layout | Done (Phase 3) |
 | `addons/core/haptics/` | HapticsManager | Done (Phase 3) |
 | `addons/core/result_flow/` | ResultFlowController, result screen | Done (Phase 3) |
-| `addons/core/{performance,pooling,analytics,ads}/` | Remaining Foundation systems | Empty, see each folder's `README.md` for its phase |
-| `tests/` | Headless test suite (custom runner, no third-party addon) + scene smoke test | Done (Phase 1-3) — 12 suites, 87 tests, + auto-discovering smoke test over every `.tscn` under `addons/core/` and `scenes/` |
+| `addons/core/performance/` | PerformanceManager (LOW/HIGH presets) | Done (Phase 4) |
+| `addons/core/pooling/` | PoolManager, VFXPool, VFXBank | Done (Phase 4) |
+| `addons/core/{analytics,ads}/` | Remaining Foundation systems | Empty, see each folder's `README.md` for its phase |
+| `tests/` | Headless test suite (custom runner, no third-party addon) + scene smoke test | Done (Phase 1-4) — 16 suites, 122 tests, + auto-discovering smoke test over every `.tscn` under `addons/core/` and `scenes/` (9 scenes) |
 | `game/` | Per-game gameplay logic | Empty — do not populate before an actual MVP is approved |
 | `presentation/` | Per-game art/VFX/audio | Empty — do not populate before an actual MVP is approved |
 | `ci/` | Build environment + export/test scripts | Debug Android export only (Phase 0); `ci/run_tests.sh` gates it (Phase 1, hardened Phase 3) |
-| `tools/validation/` | Automated validation rule definitions | Empty until Phase 7 |
+| `tools/validation/` | Automated validation rule definitions | Advisory checks implemented (Phase 4, pulled forward); not yet CI-gated — broader validation still Phase 7 |
 | `docs/ARCHITECTURE.md` | Build-relevant architecture notes | Living document |
 
 ## Before doing new work here
